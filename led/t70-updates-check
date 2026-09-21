@@ -1,0 +1,23 @@
+#!/bin/bash
+# t70-updates-check — blink the ATTN LED while apt has upgradable packages.
+#
+# Counts what `apt-get dist-upgrade` would install using the package lists that
+# apt-daily.timer already fetches (no network access here), records the count in
+# /run/t70-updates for `t70-led show`, and starts or stops t70-attn-blink.service.
+# Run by t70-updates-check.timer and by the apt hooks in /etc/apt/apt.conf.d/99-t70-led.
+
+set -euo pipefail
+STATE="${T70_UPDATES_FILE:-/run/t70-updates}"
+
+# -s never touches the system; NoLocking lets it run inside apt's own hooks.
+count=$(apt-get -s -o Debug::NoLocking=1 dist-upgrade 2>/dev/null | grep -c '^Inst' || true)
+count=${count:-0}
+
+printf '%s\n' "$count" > "$STATE"
+
+if (( count > 0 )); then
+    systemctl start t70-attn-blink.service
+else
+    systemctl stop t70-attn-blink.service
+    t70-led attn off
+fi

@@ -1,0 +1,4 @@
+// WatchGuard T70: refresh the ATTN LED right after `apt update` and after any
+// dpkg run, so the LED clears as soon as `apt upgrade` finishes.
+APT::Update::Post-Invoke { "/usr/bin/t70-updates-check || true"; };
+DPkg::Post-Invoke { "/usr/bin/t70-updates-check || true"; };

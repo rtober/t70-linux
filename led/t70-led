@@ -1,0 +1,104 @@
+#!/bin/bash
+# t70-led — drive the WatchGuard T70 front-panel LEDs from Ubuntu.
+#
+# The LEDs hang off the Braswell SoC's "north" GPIO community (chv_gpio,
+# ACPI INT33FF:01, 73 lines). Mapped empirically on 2026-09-18:
+#
+#   line 1  MODE      green
+#   line 2  *** NIC / PHY reset — driving it low kills every Ethernet port ***
+#   line 3  ATTN      yellow
+#   line 5  FAILOVER  yellow
+#   line 7  STATUS    red
+#
+# All lines are active-low: 0 = LED on, 1 = LED off. The power LED is hard-wired.
+# Uses the sysfs GPIO interface so the level persists with no process left behind.
+#
+# usage: t70-led <mode|attn|failover|status|all> <on|off>
+#        t70-led <mode|attn|failover|status> blink      (1 Hz, foreground, until killed)
+#        t70-led show
+
+set -euo pipefail
+
+declare -A LED=( [mode]=1 [attn]=3 [failover]=5 [status]=7 )
+
+usage() {
+    echo "usage: t70-led <mode|attn|failover|status|all> <on|off|blink> | t70-led show" >&2
+    echo "       (blink: single LED only, runs in the foreground until killed)" >&2
+    exit 2
+}
+
+north_base() {
+    # /sys/class/gpio/gpiochip<base>/ carries label, ngpio and base for each chip.
+    local c label ngpio
+    for c in /sys/class/gpio/gpiochip*/; do
+        label=$(cat "${c}label" 2>/dev/null || true)
+        ngpio=$(cat "${c}ngpio" 2>/dev/null || true)
+        if [[ "$label" == "INT33FF:01" ]] || [[ "$ngpio" == "73" ]]; then
+            cat "${c}base"
+            return 0
+        fi
+    done
+    echo "t70-led: Braswell north GPIO community (INT33FF:01, 73 lines) not found under /sys/class/gpio" >&2
+    exit 1
+}
+
+set_led() {                     # set_led <name> <on|off>
+    local n=$(( BASE + LED[$1] )) dir
+    case "$2" in
+        on)  dir=low  ;;        # active-low: drive low to light
+        off) dir=high ;;
+        *)   usage ;;
+    esac
+    [[ -d "/sys/class/gpio/gpio$n" ]] || echo "$n" > /sys/class/gpio/export
+    # writing "low"/"high" to direction sets output mode and the level atomically
+    echo "$dir" > "/sys/class/gpio/gpio$n/direction"
+}
+
+blink_led() {                   # blink_led <name> — 1 Hz until SIGTERM/SIGINT
+    local n=$(( BASE + LED[$1] )) v
+    v="/sys/class/gpio/gpio$n/value"   # separate statement: $n is unset until local completes
+    set_led "$1" off            # exports the line and puts it in output mode
+    trap 'exit 0' TERM INT
+    while :; do
+        echo 0 > "$v"; sleep 0.5
+        echo 1 > "$v"; sleep 0.5
+    done
+}
+
+show_led() {                    # show_led <name>
+    local n=$(( BASE + LED[$1] )) v="?" extra=""
+    if [[ -d "/sys/class/gpio/gpio$n" ]]; then
+        v=$(cat "/sys/class/gpio/gpio$n/value")
+        [[ "$v" == 0 ]] && v=on || v=off
+    else
+        v="unexported (BIOS default: off)"
+    fi
+    if [[ "$1" == attn ]]; then
+        local f="${T70_UPDATES_FILE:-/run/t70-updates}" c
+        c=$(cat "$f" 2>/dev/null || echo 0)
+        [[ "$c" =~ ^[0-9]+$ ]] && (( c > 0 )) && extra="  ($c pending)"
+    fi
+    printf '%-9s line %d  %s%s\n' "$1" "${LED[$1]}" "$v" "$extra"
+}
+
+[[ $# -ge 1 ]] || usage
+# show only reads sysfs (world-readable); setting or blinking needs root
+[[ "$1" == show || $EUID -eq 0 ]] || { echo "t70-led: run as root" >&2; exit 1; }
+BASE=$(north_base)
+
+case "$1" in
+    show)
+        for name in mode attn failover status; do show_led "$name"; done
+        ;;
+    all)
+        [[ $# -eq 2 ]] || usage
+        for name in mode attn failover status; do set_led "$name" "$2"; done
+        ;;
+    mode|attn|failover|status)
+        [[ $# -eq 2 ]] || usage
+        if [[ "$2" == blink ]]; then blink_led "$1"; else set_led "$1" "$2"; fi
+        ;;
+    *)
+        usage
+        ;;
+esac
