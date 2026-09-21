@@ -41,7 +41,7 @@ for u in dsa/*.service led/*.service; do
         case "$bin" in
             /usr/bin/*) grep -qE "^(led|poe)/$(basename "$bin") usr/bin/?$" debian/*.install \
                             || err "$u: $bin is not installed by any debian/*.install" ;;
-            /sbin/modprobe) ;;
+            /sbin/modprobe|/sbin/rmmod) ;;
             *) err "$u: unexpected executable $bin" ;;
         esac
     done < <(grep -oE '^Exec[A-Za-z]*=[^ ]+' "$u" | cut -d= -f2)

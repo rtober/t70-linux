@@ -93,21 +93,27 @@ optional — override in `/etc/netplan/`).
 | 6 | 3 | lan6 |
 | 7 | 4 | lan7 |
 
-Verified 2026-09-20: dmesg shows `t70-dsa: 88E6176 rev 1 on enp4s0 (0000:04:00.0)`,
-then `mv88e6085 t70-smi:00: skipping link registration for CPU port 5`, then
-`t70-dsa: CPU port 5 SerDes forced up (1000BASE-X, no autoneg)`. Without a
-device-tree node DSA skips phylink for CPU port 5 and mainline `mv88e6xxx` only
-powers a SerDes via phylink, so the module itself writes the SerDes BMCR (page 1
-of SMI-PHY `0xF` via Global2) to powered/no-autoneg/1000/full and forces port 5's
-MAC control up after `mv88e6xxx` probes — `igb` runs the I210 in 1000BASE-KX
-parallel-detect mode, which needs autoneg off on the switch side. `lan3` got a
-DHCP lease, pinged `1.1.1.1`, and fetched a 255 kB file over HTTP (TCP) with
-conduit checksum offload left enabled, so no `ethtool -K` workaround is needed.
-`dkms status` reports `t70-dsa/1.0.0, <kernel>: installed`. `rmmod` tears
-the tree down cleanly. Reboot: after `sudo reboot` the unit started at t=20 s once `enp4s0` existed, the module and switch detection logged at t=21 s, the SerDes fixup at t=23 s, `enp4s0` had carrier and `lan3` held a single networkd DHCP lease within a minute. `tools/t70-mdio-probe.py` must
-not be run while `t70-dsa` is loaded. DKMS rebuilds the module for new kernels
-automatically; if a kernel update ever breaks the build, `dkms status` shows it
-and the ports are simply absent — the discrete NICs are unaffected.
+Verified 2026-09-20: dmesg shows `t70-dsa: 88E6176 rev 1 on enp4s0
+(0000:04:00.0)`, then `mv88e6085 t70-smi:00: skipping link registration
+for CPU port 5`, then `t70-dsa: CPU port 5 SerDes forced up (1000BASE-X,
+no autoneg)`. Without a device-tree node DSA skips phylink for CPU port 5
+and mainline `mv88e6xxx` only powers a SerDes via phylink, so the module
+itself writes the SerDes BMCR (page 1 of SMI-PHY `0xF` via Global2)
+to powered/no-autoneg/1000/full and forces port 5's MAC control up after
+`mv88e6xxx` probes — `igb` runs the I210 in 1000BASE-KX parallel-detect mode,
+which needs autoneg off on the switch side. `lan3` got a DHCP lease, pinged
+`1.1.1.1`, and fetched a 255 kB file over HTTP (TCP) with conduit checksum
+offload left enabled, so no `ethtool -K` workaround is needed. `dkms status`
+reports `t70-dsa/1.0.0, <kernel>: installed`. `rmmod` tears the tree down
+cleanly. The unit stops the module with rmmod deliberately — modprobe -r
+would also unload the softdeps, including igb, and drop every NIC (found
+2026-09-21 while testing apt remove). Reboot: after `sudo reboot` the unit
+started at t=20 s once `enp4s0` existed, the module and switch detection
+logged at t=21 s, the SerDes fixup at t=23 s, `enp4s0` had carrier and `lan3`
+held a single networkd DHCP lease within a minute. `tools/t70-mdio-probe.py`
+must not be run while `t70-dsa` is loaded. DKMS rebuilds the module for new
+kernels automatically; if a kernel update ever breaks the build, `dkms status`
+shows it and the ports are simply absent — the discrete NICs are unaffected.
 
 ## PoE on panel ports 6 and 7
 

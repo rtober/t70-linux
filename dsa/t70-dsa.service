@@ -3,11 +3,12 @@ Description=WatchGuard T70: DSA switch behind enp4s0 (lan3-lan7)
 After=sys-subsystem-net-devices-enp4s0.device
 BindsTo=sys-subsystem-net-devices-enp4s0.device
 
+# ExecStop uses rmmod, not "modprobe -r": the latter also unloads the softdeps in /etc/modprobe.d/t70-dsa.conf, taking igb (every NIC) down with it.
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/sbin/modprobe t70-dsa
-ExecStop=/sbin/modprobe -r t70-dsa
+ExecStop=/sbin/rmmod t70-dsa
 
 [Install]
 WantedBy=multi-user.target
