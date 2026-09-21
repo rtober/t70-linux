@@ -15,7 +15,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            git ca-certificates build-essential debhelper dkms lintian linux-headers-generic
+            git ca-certificates build-essential debhelper dh-sequence-dkms dkms lintian linux-headers-generic
       - uses: actions/checkout@v4
       - name: Static checks
         run: bash tests/lint.sh
