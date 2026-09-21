@@ -15,9 +15,8 @@ fi
 if grep -rlI $'\r' --exclude-dir=.git . ; then err "CRLF line endings"; fi
 
 # Packages install to /usr/bin; nothing may point at /usr/local.
-if grep -rn '/usr/local' led poe dsa debian 2>/dev/null | grep -v '^debian/changelog'; then
-    err "/usr/local reference"
-fi
+hits=$(grep -rn '/usr/local' led poe dsa debian 2>/dev/null | grep -v '^debian/changelog')
+if [ -n "$hits" ]; then echo "$hits"; err "/usr/local reference"; fi
 
 # Shell scripts parse.
 for s in led/t70-led led/t70-updates-check poe/t70-poe; do
