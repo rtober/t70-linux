@@ -1,0 +1,11 @@
+# WatchGuard T70 switch ports 3-7 (DSA user ports of the 88E6176 behind enp4s0).
+# Same defaults as the discrete NICs from the autoinstall: DHCP if a cable is
+# present, never delay boot.
+network:
+  version: 2
+  ethernets:
+    lan3: {dhcp4: true, optional: true}
+    lan4: {dhcp4: true, optional: true}
+    lan5: {dhcp4: true, optional: true}
+    lan6: {dhcp4: true, optional: true}
+    lan7: {dhcp4: true, optional: true}
