@@ -24,12 +24,20 @@ any of this. PoE on ports 6/7 is powered by the hardware on its own.
 
 ## Install
 
-Download the `.deb` files from the [latest release](https://github.com/rtober/t70-linux/releases/latest), then:
+Download the packages and their checksums from the [latest release](https://github.com/rtober/t70-linux/releases/latest), verify, install:
 
 ```bash
+V=1.0.0
+mkdir -p ~/t70 && cd ~/t70
+for f in SHA256SUMS t70-dsa-dkms_${V}-1_all.deb t70-led_${V}-1_all.deb t70-poe_${V}-1_all.deb; do
+  wget -q "https://github.com/rtober/t70-linux/releases/download/v${V}/$f"
+done
+sha256sum -c SHA256SUMS
 sudo apt install ./t70-dsa-dkms_*.deb ./t70-led_*.deb ./t70-poe_*.deb
 sudo reboot     # or: sudo modprobe t70-dsa
 ```
+
+Set `V` to the release you want; the checksum check fails loudly if a download is truncated or tampered with.
 
 `apt` pulls in `dkms`, the compiler and `i2c-tools`. After the reboot
 `ip link` lists `lan3`–`lan7` (DHCP if a cable is present, never delays boot —

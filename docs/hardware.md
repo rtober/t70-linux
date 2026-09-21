@@ -32,23 +32,17 @@ Port label → interface map (all confirmed by cable test, 2026-09-18/20):
   wire side goes to a **Marvell 88E6xxx** switch, not a socket. Ports 3–7 show
   **no link LED at all** under Ubuntu: the switch's PHYs stay powered down until
   a driver initialises the chip.
-- The vendor OS uses mainline DSA: `dsa_core`, `mdio`, **`mv88e6xxx_drv`**,
-  plus a glue module `wg_dsa` (`depends: dsa_core`; strings `find_mdio`,
-  `__mdiobus_register`, `wg_dsa_smi_reg`, `marvell_reset_slave`, param
-  `split_mode`). Loaded by its network init script. So the switch is managed
-  over Marvell SMI through the I210's MDIO pins, and `wg_dsa` only registers
-  that MDIO bus + platform data for `mv88e6xxx`.
+- The vendor OS uses mainline DSA (`dsa_core`, `mdio`, `mv88e6xxx_drv`) plus a
+  small glue module, so the switch is managed over Marvell SMI through the
+  I210's MDIO pins, and the glue module only registers that MDIO bus +
+  platform data for `mv88e6xxx`.
 - Feasibility (2026-09-18, since done — see "DSA: ports 3–7" below): Ubuntu's kernel
   has `mv88e6xxx` with an x86 platform-data probe; what was needed was one small
   out-of-tree module providing an `mii_bus` over the I210's MDIC register plus
   the platform data — that is `dsa/t70-dsa.c`.
-- From the vendor's network init script: load order is
-  `dsa_core` → `mv88e6xxx_drv` → `wg_dsa` (no parameters) →
-  `/sbin/setmacs`; then `ethtool -K sw10 rx off tx off` on the conduit. `wg_dsa`
-  names the conduit `sw10` (`sw11` for a second chip) and user ports `eth4+`.
-  It also disables ACPI `GPE17` as an "interim fix before BIOS > v1.2" — moot on
-  BIOS 1.16, but check `/sys/firmware/acpi/interrupts/gpe17` if DSA ever shows
-  an interrupt storm.
+- The vendor OS disables ACPI `GPE17` as an interim fix for BIOS < 1.2 — moot
+  on BIOS 1.16, but check `/sys/firmware/acpi/interrupts/gpe17` if DSA ever
+  shows an interrupt storm.
 - `mv88e6xxx` identifies the chip from its ID register at probe, so the model
   need not be known in advance; the platform data only needs the SMI address
   and CPU port number, both readable over the bus once the MDIO bridge exists.
@@ -61,14 +55,12 @@ Global2 `0x1C`). **CPU port = 5** (C_Mode 1000BASE-X SerDes, the I210's KX link)
 regs `0x18/0x19`); port 6 is RGMII and unconnected. The SerDes is unpowered until a
 driver enables it, which is why `enp4s0` never links.
 
-**I210 external-PHY MDIO mode** (Intel I210 datasheet, MDICNFG register 0x0E04; the
-vendor's igb build uses the same mode): with `MDICNFG.Destination = external` (bit 31) the PHY
+**I210 external-PHY MDIO mode** (Intel I210 datasheet, MDICNFG register 0x0E04):
+with `MDICNFG.Destination = external` (bit 31) the PHY
 address driven on the wire is **`MDICNFG.PHY_ADDR` bits 25:21**, and `MDIC.PHYADD`
 must be 0. Putting the address in MDIC (the documented way) talks to address 0 and
-reads all-ones with the error bit. The vendor's igb registers the resulting
-`mii_bus` with direct access for addresses > 0xF and Global2
-SMI-PHY access for 0–0xF — the same split mainline `mv88e6xxx` uses for the 6352
-family. No GPIO/SDP reset is involved; the switch is alive at power-on.
+reads all-ones with the error bit. No GPIO/SDP reset is involved; the switch is
+alive at power-on.
 
 Tooling: `tools/t70-mdio-probe.py` (`--internal` sanity-scans the I210's own PHY,
 `--regs` dumps every responding address) and `tools/t70-ko-syms.py` (lists a

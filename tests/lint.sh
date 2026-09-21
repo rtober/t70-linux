@@ -47,4 +47,8 @@ for u in dsa/*.service led/*.service; do
     done < <(grep -oE '^Exec[A-Za-z]*=[^ ]+' "$u" | cut -d= -f2)
 done
 
+# Public-repo hygiene: no vendor-OS internals or private-repo references in prose.
+hits=$(grep -rniE 'fireware|setmacs|S21eth|/home/rtober|autoinstall|wg_dsa|sled_drv|igb-intel' README.md docs dsa led poe tools 2>/dev/null)
+if [ -n "$hits" ]; then echo "$hits"; err "vendor/private reference in prose"; fi
+
 exit $fail
