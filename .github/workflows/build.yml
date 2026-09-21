@@ -25,6 +25,8 @@ jobs:
           mkdir out && mv ../t70-*.deb out/ && ls -l out
       - name: Lintian
         run: lintian --fail-on error out/*.deb
+      - name: Check package contents
+        run: bash tests/check-debs.sh out/*.deb
       - name: Compile the module against the 26.04 kernel
         run: |
           kver=$(ls /lib/modules | head -1)

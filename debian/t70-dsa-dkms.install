@@ -1,2 +1,3 @@
 dsa/t70-dsa.conf etc/modprobe.d/
 dsa/60-t70-lan.yaml usr/lib/netplan/
+dsa/t70-dsa.service usr/lib/systemd/system/

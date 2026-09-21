@@ -33,9 +33,9 @@ done
         || err "changelog: first line must be 't70-linux (X.Y.Z-N) ...'"
 }
 # Every Exec*= in a unit points at a shipped binary (or modprobe).
-for u in debian/*.service; do
+for u in dsa/*.service led/*.service; do
     [ -f "$u" ] || continue
-    grep -q '^ConditionPathExists=/sys/bus/acpi/devices/INT33FF:01$' "$u" || [ "$u" != debian/t70-led.service ] \
+    grep -q '^ConditionPathExists=/sys/bus/acpi/devices/INT33FF:01$' "$u" || [ "$u" != led/t70-led.service ] \
         || err "$u: missing ConditionPathExists=/sys/bus/acpi/devices/INT33FF:01"
     while read -r bin; do
         case "$bin" in

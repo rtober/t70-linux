@@ -1,3 +1,7 @@
 led/t70-led usr/bin/
 led/t70-updates-check usr/bin/
 led/99-t70-led etc/apt/apt.conf.d/
+led/t70-led.service usr/lib/systemd/system/
+led/t70-attn-blink.service usr/lib/systemd/system/
+led/t70-updates-check.service usr/lib/systemd/system/
+led/t70-updates-check.timer usr/lib/systemd/system/
