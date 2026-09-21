@@ -9,6 +9,6 @@ include /usr/share/dpkg/pkg-info.mk
 execute_after_dh_install:
 	install -D -m 644 -t debian/t70-dsa-dkms/usr/src/t70-dsa-$(DEB_VERSION_UPSTREAM) dsa/t70-dsa.c dsa/Makefile
 
-# -V with no argument substitutes #MODULE_VERSION# with the upstream version.
+# -V with the upstream version substitutes #MODULE_VERSION# in the dkms.conf.
 override_dh_dkms:
-	dh_dkms -V
+	dh_dkms -V $(DEB_VERSION_UPSTREAM)
