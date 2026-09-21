@@ -115,6 +115,11 @@ must not be run while `t70-dsa` is loaded. DKMS rebuilds the module for new
 kernels automatically; if a kernel update ever breaks the build, `dkms status`
 shows it and the ports are simply absent — the discrete NICs are unaffected.
 
+Verified 2026-09-21 with the packaged build: `apt install` of the three `.deb`s on a
+box with the earlier hand-installed files removed built the module in the dkms
+postinst (for every installed kernel), brought `lan3`–`lan7` up before and after a
+reboot, and `apt remove` left nothing behind and kept the discrete NICs up.
+
 ## PoE on panel ports 6 and 7
 
 Autonomous — nothing to drive from Linux. The vendor OS has no PoE driver for
