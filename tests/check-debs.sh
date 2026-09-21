@@ -27,12 +27,19 @@ dsa_deb=$(get_deb t70-dsa-dkms "$@") || err "t70-dsa-dkms .deb not found among: 
 led_deb=$(get_deb t70-led "$@") || err "t70-led .deb not found among: $*"
 poe_deb=$(get_deb t70-poe "$@") || err "t70-poe .deb not found among: $*"
 
+# dpkg-deb -c prints "perms owner/group size date time ./path[ -> target]";
+# field 6 is always the bare path. Extract it so matching doesn't depend on
+# the width of the preceding columns.
+paths_of() {
+    dpkg-deb -c "$1" | awk '{print $6}'
+}
+
 # Both unit dirs are legal debhelper output; find which one dh_installsystemd used.
 unit_dir_for() {
-    local deb="$1" listing="$2"
-    if echo "$listing" | grep -q '^\./usr/lib/systemd/system/'; then
+    local paths="$1"
+    if echo "$paths" | grep -q '^\./usr/lib/systemd/system/'; then
         echo "usr/lib/systemd/system"
-    elif echo "$listing" | grep -q '^\./lib/systemd/system/'; then
+    elif echo "$paths" | grep -q '^\./lib/systemd/system/'; then
         echo "lib/systemd/system"
     else
         echo ""
@@ -42,10 +49,10 @@ unit_dir_for() {
 check_contents() {
     local deb="$1"; shift
     [ -n "$deb" ] || return 1
-    local listing
-    listing=$(dpkg-deb -c "$deb") || { err "$deb: dpkg-deb -c failed"; return 1; }
+    local paths
+    paths=$(paths_of "$deb") || { err "$deb: dpkg-deb -c failed"; return 1; }
     local udir
-    udir=$(unit_dir_for "$deb" "$listing")
+    udir=$(unit_dir_for "$paths")
     echo "check-debs: $(basename "$deb"): unit dir = ${udir:-<none found>}"
     for path in "$@"; do
         local p="$path"
@@ -56,7 +63,7 @@ check_contents() {
                 p="$udir/${p#UNITDIR/}"
                 ;;
         esac
-        echo "$listing" | grep -qE "^\./${p}( ->.*)?\$" \
+        echo "$paths" | grep -qFx "./$p" \
             || err "$deb: missing ./$p"
     done
 }
