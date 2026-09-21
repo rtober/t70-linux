@@ -135,9 +135,12 @@ check_dsa_postinst() {
     local f; f=$(extract_ctrl "$deb" postinst) || return 1
     require_fixed "$f" "deb-systemd-helper enable 't70-dsa.service'" "$deb postinst"
     require_line_pair "$f" "deb-systemd-invoke" "'t70-dsa.service'" "$deb postinst"
-    require_fixed "$f" "dkms add" "$deb postinst"
-    require_fixed "$f" "dkms build" "$deb postinst"
-    require_fixed "$f" "dkms install" "$deb postinst"
+    # Current dh_dkms (>=3) doesn't call `dkms add`/`build`/`install` directly;
+    # it delegates to common.postinst with the module name and version, which
+    # does the add/build/install internally. Assert that delegation call.
+    require_fixed "$f" "DKMS_NAME=t70-dsa" "$deb postinst"
+    require_fixed "$f" "DKMS_VERSION=${upstream}" "$deb postinst"
+    require_fixed "$f" '$DKMS_POSTINST $DKMS_NAME $DKMS_VERSION' "$deb postinst"
     rm -rf "$(dirname "$f")"
 }
 
