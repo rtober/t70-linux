@@ -1,0 +1,35 @@
+Source: t70-linux
+Section: admin
+Priority: optional
+Maintainer: Ryan Tober <rtober2@gmail.com>
+Build-Depends: debhelper-compat (= 13), dh-sequence-dkms
+Standards-Version: 4.7.0
+Homepage: https://github.com/rtober/t70-linux
+Rules-Requires-Root: no
+
+Package: t70-dsa-dkms
+Section: kernel
+Architecture: all
+Depends: ${misc:Depends}
+Description: WatchGuard Firebox T70 switch ports (lan3-lan7) as Linux DSA
+ Out-of-tree module that bridges the Marvell 88E6176 switch behind the
+ I210 at enp4s0 onto the mainline mv88e6xxx DSA driver, so panel ports
+ 3-7 appear as lan3-lan7. Includes modprobe options, a systemd unit and a
+ netplan drop-in (DHCP, optional). Built with DKMS for every installed
+ kernel; needs mv88e6xxx from linux-modules-extra.
+
+Package: t70-led
+Architecture: all
+Depends: ${misc:Depends}
+Description: WatchGuard Firebox T70 front-panel LED control
+ t70-led drives the MODE, ATTN, FAILOVER and STATUS LEDs through the
+ Braswell GPIO controller. A systemd unit lights MODE while the OS is up,
+ and a timer plus apt hooks blink ATTN while package updates are pending.
+
+Package: t70-poe
+Architecture: all
+Depends: ${misc:Depends}, i2c-tools
+Description: WatchGuard Firebox T70 PoE monitor
+ t70-poe reads the TI TPS23861 PSE controller over SMBus and prints
+ supply voltage, temperature and per-port class, volts, mA and watts for
+ panel ports 6 and 7. Monitoring only; the chip powers loads by itself.

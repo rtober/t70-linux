@@ -1,0 +1,3 @@
+led/t70-led usr/bin/
+led/t70-updates-check usr/bin/
+led/99-t70-led etc/apt/apt.conf.d/

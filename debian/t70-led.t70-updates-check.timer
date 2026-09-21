@@ -1,0 +1,9 @@
+[Unit]
+Description=WatchGuard T70: periodic pending-updates check for the ATTN LED
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target

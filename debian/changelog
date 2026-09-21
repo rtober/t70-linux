@@ -1,0 +1,5 @@
+t70-linux (1.0.0-1) unstable; urgency=medium
+
+  * Initial release: t70-dsa-dkms (lan3-lan7), t70-led, t70-poe.
+
+ -- Ryan Tober <rtober2@gmail.com>  Mon, 21 Sep 2026 12:00:00 +0000

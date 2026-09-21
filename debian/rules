@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+include /usr/share/dpkg/pkg-info.mk
+
+%:
+	dh $@
+
+# Sources go next to the dkms.conf that dh_dkms installs into
+# /usr/src/t70-dsa-<upstream version>/.
+execute_after_dh_install:
+	install -D -m 644 -t debian/t70-dsa-dkms/usr/src/t70-dsa-$(DEB_VERSION_UPSTREAM) dsa/t70-dsa.c dsa/Makefile
+
+# -V with no argument substitutes #MODULE_VERSION# with the upstream version.
+override_dh_dkms:
+	dh_dkms -V

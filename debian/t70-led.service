@@ -1,0 +1,17 @@
+[Unit]
+Description=WatchGuard T70 front-panel LEDs (MODE on while the OS is up)
+DefaultDependencies=no
+After=sysinit.target
+Before=shutdown.target
+Conflicts=shutdown.target
+ConditionPathExists=/sys/bus/acpi/devices/INT33FF:01
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/t70-led all off
+ExecStart=/usr/bin/t70-led mode on
+ExecStop=/usr/bin/t70-led all off
+
+[Install]
+WantedBy=sysinit.target

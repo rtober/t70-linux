@@ -1,0 +1,9 @@
+[Unit]
+Description=WatchGuard T70 ATTN LED blinking (apt updates pending)
+After=t70-led.service
+Wants=t70-led.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/t70-led attn blink
+ExecStopPost=/usr/bin/t70-led attn off

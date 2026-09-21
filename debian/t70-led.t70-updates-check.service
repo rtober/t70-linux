@@ -1,0 +1,7 @@
+[Unit]
+Description=WatchGuard T70: check for pending apt updates and set the ATTN LED
+After=apt-daily.service t70-led.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/t70-updates-check
