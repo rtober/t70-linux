@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    steps:
+      - name: Toolchain
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            git ca-certificates build-essential debhelper dkms lintian linux-headers-generic
+      - uses: actions/checkout@v4
+      - name: Static checks
+        run: bash tests/lint.sh
+      - name: Build packages
+        run: |
+          dpkg-buildpackage -us -uc -b
+          mkdir out && mv ../t70-*.deb out/ && ls -l out
+      - name: Lintian
+        run: lintian --fail-on error out/*.deb
+      - name: Compile the module against the 26.04 kernel
+        run: |
+          kver=$(ls /lib/modules | head -1)
+          make -C dsa KDIR=/lib/modules/$kver/build
+          ls -l dsa/t70-dsa.ko
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debs
+          path: out/*.deb
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag must match debian/changelog
+        run: |
+          ver=$(dpkg-parsechangelog -S Version); up=${ver%-*}
+          [ "v$up" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but debian/changelog says v$up"; exit 1; }
+      - uses: actions/download-artifact@v4
+        with:
+          name: debs
+          path: out
+      - name: Checksums
+        run: cd out && sha256sum *.deb > SHA256SUMS && cat SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
