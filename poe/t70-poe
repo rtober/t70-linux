@@ -1,0 +1,65 @@
+#!/bin/bash
+# t70-poe — read the WatchGuard T70's PoE controller (TI TPS23861, 4-port PSE)
+# on the I801 SMBus, address 0x20, and print per-port status and power.
+#
+# The chip runs in auto mode (register 0x12 = 0xff): it detects, classifies and
+# powers loads by itself, so this is monitoring only. Chip ports 1 and 2 are
+# panel ports 6 and 7; ports 3 and 4 are not wired on the T70. Ubuntu's kernel
+# has no CONFIG_OF, so the mainline tps23861 hwmon driver cannot bind on x86 —
+# hence i2cget (package i2c-tools) instead of /sys/class/hwmon.
+#
+# Scale factors from the TPS23861 datasheet (255 mΩ sense resistor):
+# voltage 3.662 mV/LSB, current 61.035 µA/LSB, temperature 0.652 °C/LSB.
+#
+# usage: t70-poe [-w]      (-w: refresh every 2 s until Ctrl-C)
+
+set -euo pipefail
+
+BUS=${T70_POE_BUS:-6}
+ADDR=0x20
+PANEL=(6 7 - -)
+
+rd8()  { i2cget -y "$BUS" "$ADDR" "$1" b; }
+rd16() { i2cget -y "$BUS" "$ADDR" "$1" w; }     # little-endian word: LSB register first
+
+detect_str() {
+    case $1 in
+        0) echo unknown ;; 1) echo short ;; 3) echo "R too low" ;; 4) echo "valid PD" ;;
+        5) echo "R too high" ;; 6) echo open ;; *) echo "code $1" ;;
+    esac
+}
+class_str() {
+    case $1 in
+        0) echo - ;; 1|2|3|4) echo "class $1" ;; 6) echo "class 0" ;; 7) echo overcurrent ;;
+        8) echo mismatch ;; *) echo "code $1" ;;
+    esac
+}
+
+show() {
+    local pwr temp vin i st det cls cur vol on pg
+    pwr=$(rd8 0x10)
+    temp=$(( $(rd8 0x2c) * 652 / 1000 ))
+    vin=$(( ($(rd16 0x2e) & 0x3fff) * 3662 / 1000 ))
+    printf 'input %d.%03d V   chip %d °C\n' $((vin / 1000)) $((vin % 1000)) "$temp"
+    printf '%-5s %-6s %-6s %-11s %-12s %8s %8s %8s\n' port panel power detect class volts mA watts
+    for i in 0 1 2 3; do
+        st=$(rd8 $((0x0c + i)))
+        det=$(( st & 0x0f )); cls=$(( st >> 4 ))
+        on=$(( (pwr >> i) & 1 )); pg=$(( (pwr >> (4 + i)) & 1 ))
+        cur=$(( ($(rd16 $((0x30 + 4 * i))) & 0x3fff) * 61035 / 1000000 ))      # mA
+        vol=$(( ($(rd16 $((0x32 + 4 * i))) & 0x3fff) * 3662 / 1000 ))         # mV
+        printf '%-5s %-6s %-6s %-11s %-12s %8s %8s %8s\n' "$((i + 1))" "${PANEL[i]}" \
+            "$([[ $on == 1 && $pg == 1 ]] && echo on || echo off)" \
+            "$(detect_str $det)" "$(class_str $cls)" \
+            "$(( vol / 1000 )).$(printf %03d $(( vol % 1000 )))" "$cur" \
+            "$(( vol * cur / 1000000 )).$(printf %02d $(( (vol * cur / 10000) % 100 )))"
+    done
+}
+
+[[ $EUID -eq 0 ]] || { echo "t70-poe: run as root (needs /dev/i2c-$BUS)" >&2; exit 1; }
+command -v i2cget >/dev/null || { echo "t70-poe: i2cget not found (apt install i2c-tools)" >&2; exit 1; }
+if [[ ${1:-} == -w ]]; then
+    while :; do clear; date; show; sleep 2; done
+else
+    show
+fi
