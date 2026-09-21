@@ -10,7 +10,7 @@ external MDIO pins and does read-only MDIC scans of all 32 SMI addresses:
   * --indirect: multi-chip mode probe (writes the SMI command register at
     each candidate address, then reads Global1 reg 3 / port 0 reg 3 via it)
 
-I210 quirk (from WatchGuard's patched igb): in external mode the wire PHY address
+I210 external-PHY mode (Intel I210 datasheet, MDICNFG 0x0E04): the wire PHY address
 is MDICNFG.PHY_ADDR, so MDICNFG is rewritten per transaction; it is restored on exit. igb is
 not told about any of this; the I210 SW/FW semaphore is NOT taken, so run
 it while enp4s0 is idle. Throwaway diagnostic — the real driver will be a
@@ -64,11 +64,11 @@ class I210:
         self.reg(off).value = val & 0xFFFFFFFF
 
     last = None           # raw MDIC completion word (or 'timeout') of the most recent transaction
-    cfg = None            # MDICNFG base value when addressing externally (Fireware quirk, see mdio())
+    cfg = None            # MDICNFG base value when addressing externally (see mdio())
 
     def mdio(self, phy, reg, op, data=0):
         if self.cfg is not None:
-            # I210 quirk learned from WatchGuard's igb: with DESTINATION = external, the PHY
+            # I210 datasheet, MDICNFG: with DESTINATION = external, the PHY
             # address driven on the wire is MDICNFG.PHY_ADDR[25:21]; MDIC.PHYADD is sent as 0.
             self.wr(MDICNFG, (self.cfg & 0xFC1FFFFF) | (phy << 21) | MDICNFG_EXT)
             phy = 0
@@ -129,7 +129,7 @@ def decode_port_status(a, r0):
 
 def g2_phy_scan(hw):
     # 88E6352-family internal PHYs sit behind Global2 (SMI 0x1C) SMI-PHY command (0x18) / data (0x19):
-    # cmd = busy(15) | clause22(12) | read(11:10=10) | phy<<5 | reg  — the same path WatchGuard's igb uses.
+    # cmd = busy(15) | clause22(12) | read(11:10=10) | phy<<5 | reg
     print('\n== PHYs via Global2 SMI-PHY command (0x1c/0x18,0x19) ==')
     for phy in range(8):
         ids = []
